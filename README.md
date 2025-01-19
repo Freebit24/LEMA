@@ -43,8 +43,7 @@ This project is **currently under development** and aims to provide a versatile 
 ## 📂 Folder Structure
 
 
-`src/
-/
+src/
 ├── components/       # Reusable UI components
 ├── pages/            # Main application pages
 ├── services/         # API calls and external integrations
