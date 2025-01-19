@@ -17,6 +17,7 @@ export interface Source {
   name: string; // Required field
   description?: string; // Optional field
   isConnected?: boolean; // Additional field for connection state
+  connectionDetails?: any; // Additional field for storing connection-specific data
 }
 
 // Utility for standardized error handling
@@ -26,7 +27,6 @@ const handleError = (operation: string, error: any) => {
 };
 
 // Fetch all sources from Firestore
-// Fetch all sources from Firestore
 export const getSources = async (): Promise<Source[]> => {
   try {
     const snapshot = await getDocs(sourcesCollection);
@@ -34,8 +34,7 @@ export const getSources = async (): Promise<Source[]> => {
     return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Source));
   } catch (error) {
     console.error("Error fetching sources:", error);
-    // Return an empty array as a fallback to handle the error gracefully
-    return [];
+    return []; // Gracefully handle error by returning an empty array
   }
 };
 
@@ -77,5 +76,33 @@ export const deleteSource = async (id: string): Promise<void> => {
     console.log(`Source with ID ${id} deleted successfully`); // Debug log
   } catch (error) {
     handleError("delete source", error);
+  }
+};
+
+// Connect to a specific source
+export const connectSource = async (id: string, connectionDetails: any): Promise<void> => {
+  try {
+    if (!id) {
+      throw new Error("Source ID is required for connecting.");
+    }
+    const sourceDoc = doc(sourcesCollection, id);
+    await updateDoc(sourceDoc, { isConnected: true, connectionDetails });
+    console.log(`Source with ID ${id} connected successfully.`);
+  } catch (error) {
+    handleError("connect source", error);
+  }
+};
+
+// Disconnect a specific source
+export const disconnectSource = async (id: string): Promise<void> => {
+  try {
+    if (!id) {
+      throw new Error("Source ID is required for disconnecting.");
+    }
+    const sourceDoc = doc(sourcesCollection, id);
+    await updateDoc(sourceDoc, { isConnected: false, connectionDetails: null });
+    console.log(`Source with ID ${id} disconnected successfully.`);
+  } catch (error) {
+    handleError("disconnect source", error);
   }
 };

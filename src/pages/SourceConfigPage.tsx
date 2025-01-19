@@ -16,7 +16,12 @@ import {
 } from "../services/sourceService";
 import { populateSources } from "../services/populateSources";
 import Modal from "../components/Modal";
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+} from "firebase/auth";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../config/firebase";
 
@@ -64,35 +69,50 @@ function SourceConfigPage() {
         console.error("Error fetching or populating sources:", error);
       }
     };
+
     fetchAndPopulateSources();
   }, []);
+
+  // Handle redirect result on page load
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      const auth = getAuth();
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          const token = GoogleAuthProvider.credentialFromResult(result)?.accessToken;
+          const user = result.user;
+
+          if (!token || !user) {
+            throw new Error("Authentication failed. Missing token or user information.");
+          }
+
+          const userDocRef = doc(db, "users", user.uid, "connections", "gmail");
+          await setDoc(userDocRef, {
+            accessToken: token,
+            email: user.email,
+            connectedAt: new Date().toISOString(),
+          });
+
+          if (currentSource?.id) {
+            toggleConnection(currentSource.id, true);
+          }
+        }
+      } catch (error) {
+        console.error("Error handling redirect result:", error);
+      }
+    };
+
+    handleRedirectResult();
+  }, [currentSource]);
 
   const handleConnect = async (source: Source) => {
     try {
       if (source.name === "Gmail") {
         const auth = getAuth();
         const provider = new GoogleAuthProvider();
-        const result = await signInWithPopup(auth, provider);
-
-        const token = GoogleAuthProvider.credentialFromResult(result)?.accessToken;
-        const user = result.user;
-
-        if (!token || !user) {
-          throw new Error("Authentication failed. No token or user received.");
-        }
-
-        const userDocRef = doc(db, "users", user.uid, "connections", "gmail");
-        await setDoc(userDocRef, {
-          accessToken: token,
-          email: user.email,
-          connectedAt: new Date().toISOString(),
-        });
-
-        if (!source.id) {
-          console.error("Source ID is undefined. Skipping connection toggle.");
-          return;
-        }
-        toggleConnection(source.id, true);        
+        setCurrentSource(source); // Save the current source for after redirect
+        await signInWithRedirect(auth, provider); // Use redirect method
       } else {
         setCurrentSource(source);
         setModalOpen(true);
@@ -120,14 +140,12 @@ function SourceConfigPage() {
           return;
         }
         toggleConnection(source.id, false);
-        
       } else {
         if (!source.id) {
           console.error("Source ID is undefined. Cannot toggle connection.");
           return;
         }
         toggleConnection(source.id, false);
-        
       }
     } catch (error) {
       console.error(`Error disconnecting from ${source.name}:`, error);
@@ -236,22 +254,22 @@ function SourceConfigPage() {
       </footer>
 
       {modalOpen && currentSource && (
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        source={{
-          id: currentSource.id || "default-id", // Fallback value
-          name: currentSource.name || "Unknown Source", // Fallback value
-          isConnected: currentSource.isConnected ?? false, // Fallback to false
-        }}
-        onComplete={(isConnected) => {
-          if (currentSource?.id) {
-            toggleConnection(currentSource.id, isConnected);
-          }
-          setModalOpen(false);
-        }}
-      />
-    )}
+        <Modal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          source={{
+            id: currentSource.id || "default-id",
+            name: currentSource.name || "Unknown Source",
+            isConnected: currentSource.isConnected ?? false,
+          }}
+          onComplete={(isConnected) => {
+            if (currentSource?.id) {
+              toggleConnection(currentSource.id, isConnected);
+            }
+            setModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

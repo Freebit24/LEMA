@@ -1,11 +1,11 @@
-// Import the functions you need from the SDKs
+// Import the functions from the SDKs
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+// import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// Your web app's Firebase configuration
+//web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCjcPIV-ndBmJJYgdXpIiUrWGv9lOfTZg0",
   authDomain: "lema-ai.firebaseapp.com",

@@ -10,6 +10,7 @@ import {
   User,
   UserCredential,
   updateProfile,
+  sendEmailVerification,
 } from "firebase/auth";
 import { auth } from "../config/firebase";
 import WaveForm from "../components/ui/WaveForm";
@@ -24,6 +25,7 @@ interface UserAuthContextType {
   logOut: () => Promise<void>;
   googleSignIn: () => Promise<UserCredential>;
   resetPassword: (email: string) => Promise<void>;
+  sendVerificationEmail: () => Promise<void>;
 }
 
 // Create the context with default values
@@ -85,11 +87,13 @@ export function UserAuthContextProvider({ children }: UserAuthContextProviderPro
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-  
+
       if (user) {
         await updateProfile(user, { displayName });
+        await sendEmailVerification(user); // Send email verification after signing up
+        console.log("Verification email sent.");
       }
-  
+
       setState((prev) => ({ ...prev, user }));
       return userCredential;
     } catch (err: any) {
@@ -100,6 +104,7 @@ export function UserAuthContextProvider({ children }: UserAuthContextProviderPro
       setState((prev) => ({ ...prev, isLoading: false }));
     }
   }
+
   async function logOut(): Promise<void> {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
@@ -144,6 +149,21 @@ export function UserAuthContextProvider({ children }: UserAuthContextProviderPro
     }
   }
 
+  async function sendVerificationEmail(): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("No user is signed in to send a verification email.");
+    }
+
+    try {
+      await sendEmailVerification(user);
+      console.log("Verification email sent.");
+    } catch (err: any) {
+      console.error("Error sending verification email:", err.message);
+      throw new Error("Failed to send verification email.");
+    }
+  }
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setState((prev) => ({ ...prev, user: currentUser }));
@@ -170,6 +190,7 @@ export function UserAuthContextProvider({ children }: UserAuthContextProviderPro
         logOut,
         googleSignIn,
         resetPassword,
+        sendVerificationEmail,
       }}
     >
       {children}
